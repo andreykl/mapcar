@@ -1,8 +1,17 @@
+(*
+  This file contains definition of lisp's `mapcar` function (php's `array_map`).
+  http://clhs.lisp.se/Body/f_mapc_.htm
+  https://www.php.net/manual/en/function.array-map.php
+
+  mapcar (\s x -> s ++ show x) (["aaa", "bbb"], [1, 2]) == ["aaa1", "bbb2"]
+  mapcar (+ 1) ([1, 2]) == [2, 3]
+ *)
+
 Require Import List.
 
 Set Universe Polymorphism.
 
-(* Length-indexed list *)
+(* Length-indexed list. *)
 Module IList.
   Inductive t (A : Type) : nat -> Type :=
   | Nil : t A 0
@@ -25,7 +34,7 @@ Module IList.
 End IList.
 Definition IList := IList.t.
 
-(* Specific heterogenous list indexed by length of argument array *)
+(* Specific heterogenous list indexed by the length of argument array. *)
 Module HList.
   Import ListNotations.
   
@@ -102,8 +111,35 @@ Definition mapcar1 {ts n tres} (lists : HList n ts) (f : Tf tres ts)
   : IList tres n :=
   let fs := fs n f in reduce_lists lists fs.
 
+Arguments mapcar1 {_ _ _} lists%hlist_scope _.
+
 Definition mapcar {ts n tres} (f : Tf tres ts) (lists : HList n ts) :=
   mapcar1 lists f.
+
+Arguments mapcar {_ _ _} _ lists%hlist_scope.
+
+(*
+  Machinery below is needed to allow implicit conversions from usual `list`
+  (including `String`) to our length-indexed `IList` and vice-versa.
+*)
+Open Scope list_scope.
+
+Fixpoint list_to_ilist {A} (xs : list A) : IList A (length xs) :=
+  match xs with
+  | [] => []%ilist
+  | x :: xs => (x :: list_to_ilist xs)%ilist
+  end.
+
+Fixpoint ilist_to_list {A n} (xs : IList A n) : list A :=
+  match xs with
+  | []%ilist => []
+  | (x :: xs)%ilist => x :: ilist_to_list xs
+  end.
+
+Coercion list_to_ilistC {A} := @list_to_ilist A.
+Coercion ilist_to_listC {A} := @ilist_to_list A.
+
+(* Examples *)
 
 Compute mapcar1 testHList
   (fun n b o =>
@@ -113,13 +149,12 @@ Compute mapcar (ts := HList.getTypes testHList)
   (fun n b o =>
      n + if b then 1 else 0 + match o with Some x => x | None => 0 end) testHList.
 
+(* Examples by @monk *)
 
-Compute mapcar1 [[1 ; 2]] (fun x => x + 1).
-
+Require Import Coq.Strings.String.
 Require Import Coq.Strings.Ascii.
 
-Compute mapcar1 (["aaa"; "bbb"], [1 ; 2]) (fun s x => s ++ ascii_of_nat x).
-                                                          
-(*
-Т. Е. Функции mapcar мы передаем 1) Функцию f, 2) произвольное число списков n. При этом функция f должна принимать n аргументов (по одному из каждого списка). Ну и результат есть список результатов применения функции к соответствующим элементам аргументов?
- *)
+Open Scope string_scope.
+
+Compute mapcar1 [ ["aaa"; "bbb"] ; ["1"; "2"] ] (fun s x => s ++ x).
+Compute mapcar1 [[1; 2]] (fun x => x + 1).
