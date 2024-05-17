@@ -178,12 +178,17 @@ Compute mapcar (ts := HList.getTypes testHList)
 
 (* Examples by @monk *)
 
+Require Import Arith.
 Require Import Coq.Strings.String.
 Require Import Coq.Strings.Ascii.
 
 Open Scope string_scope.
 
 Compute mapcar1 [ ["aaa"; "bbb"] ; ["1"; "2"] ] (fun s x => s ++ x).
+
+Compute mapcar1 [ ["aaa"; "bbb"] ; [1; 2] ]
+(fun s x => s ++ if (x <=? 1)%nat then "1" else "2").
+
 Compute mapcar1 [[1; 2]] (fun x => x + 1).
 
     </textarea>
